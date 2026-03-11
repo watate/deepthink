@@ -45,9 +45,7 @@ async def generate_questions(
     settings = get_settings()
 
     if existing_questions:
-        numbered = "\n".join(
-            f"{i + 1}. {q}" for i, q in enumerate(existing_questions)
-        )
+        numbered = "\n".join(f"{i + 1}. {q}" for i, q in enumerate(existing_questions))
         existing_section = (
             f"The following questions have already been asked. "
             f"Do NOT repeat or rephrase any of them:\n{numbered}"
@@ -82,7 +80,7 @@ async def generate_questions(
 
 async def evaluate_answer(
     question: str, answer: str, context: str
-) -> dict[str, int | str]:
+) -> EvaluationResponse:
     """Evaluate an answer and return score + feedback."""
     client = _get_client()
     settings = get_settings()
@@ -104,10 +102,9 @@ async def evaluate_answer(
         response_format=_response_format("evaluation", EvaluationResponse),
     )
 
-    data = EvaluationResponse.model_validate_json(
+    return EvaluationResponse.model_validate_json(
         resp.choices[0].message.content or '{"score": 0, "feedback": ""}'
     )
-    return data.model_dump()
 
 
 def split_text_into_blocks(text: str) -> list[str]:

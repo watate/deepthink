@@ -4,7 +4,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from apps.backend.main import app
-from apps.backend.models import AnswerBlock, BlockTree, QuestionBlock, TitleBlock
+from apps.backend.models import (
+    AnswerBlock,
+    BlockTree,
+    EvaluationResponse,
+    QuestionBlock,
+    TitleBlock,
+)
 
 
 @pytest.fixture
@@ -48,8 +54,10 @@ def answered_tree(sample_tree: BlockTree) -> BlockTree:
 @pytest.fixture
 def evaluated_tree(answered_tree: BlockTree) -> BlockTree:
     """A tree with one evaluated answer."""
-    answered_tree.blocks[0].questions[0].answer.score = 75
-    answered_tree.blocks[0].questions[0].answer.feedback = "Good depth of thinking."
+    answer = answered_tree.blocks[0].questions[0].answer
+    assert answer is not None
+    answer.score = 75
+    answer.feedback = "Good depth of thinking."
     return answered_tree
 
 
@@ -57,10 +65,18 @@ def evaluated_tree(answered_tree: BlockTree) -> BlockTree:
 def mock_s3():
     """Mock all S3 service functions."""
     with (
-        patch("apps.backend.routes.s3_service.save_tree", new_callable=AsyncMock) as save,
-        patch("apps.backend.routes.s3_service.load_tree", new_callable=AsyncMock) as load,
-        patch("apps.backend.routes.s3_service.list_trees", new_callable=AsyncMock) as list_t,
-        patch("apps.backend.routes.s3_service.delete_tree", new_callable=AsyncMock) as delete,
+        patch(
+            "apps.backend.routes.s3_service.save_tree", new_callable=AsyncMock
+        ) as save,
+        patch(
+            "apps.backend.routes.s3_service.load_tree", new_callable=AsyncMock
+        ) as load,
+        patch(
+            "apps.backend.routes.s3_service.list_trees", new_callable=AsyncMock
+        ) as list_t,
+        patch(
+            "apps.backend.routes.s3_service.delete_tree", new_callable=AsyncMock
+        ) as delete,
     ):
         yield {"save": save, "load": load, "list": list_t, "delete": delete}
 
@@ -89,7 +105,7 @@ def mock_llm():
             ["Question 3?", "Question 4?"],
         ]
         gen.return_value = ["New question?"]
-        evaluate.return_value = {"score": 85, "feedback": "Great answer."}
+        evaluate.return_value = EvaluationResponse(score=85, feedback="Great answer.")
         yield {
             "split": split,
             "gen_for_blocks": gen_for_blocks,

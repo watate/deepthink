@@ -242,9 +242,7 @@ async def submit_answer(tree_id: str, question_id: str, req: SubmitAnswerRequest
     return tree
 
 
-@router.post(
-    "/trees/{tree_id}/answers/{answer_id}/evaluate", response_model=BlockTree
-)
+@router.post("/trees/{tree_id}/answers/{answer_id}/evaluate", response_model=BlockTree)
 async def evaluate_answer(tree_id: str, answer_id: str, _req: EvaluateAnswerRequest):
     tree = await _load_tree_or_404(tree_id)
     answer = _find_answer(tree, answer_id)
@@ -258,14 +256,16 @@ async def evaluate_answer(tree_id: str, answer_id: str, _req: EvaluateAnswerRequ
             a = _search_answer(q, answer_id)
             if a is not None:
                 # Walk back to find the question that owns this answer
-                question_text = _find_question_text_for_answer(q, answer_id) or q.content
+                question_text = (
+                    _find_question_text_for_answer(q, answer_id) or q.content
+                )
                 break
 
     context = tree.original_text
     result = await llm_service.evaluate_answer(question_text, answer.content, context)
 
-    answer.score = result.get("score", 0.0)
-    answer.feedback = result.get("feedback", "")
+    answer.score = result.score
+    answer.feedback = result.feedback
 
     await s3_service.save_tree(tree_id, tree.model_dump())
     return tree

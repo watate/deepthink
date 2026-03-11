@@ -149,7 +149,9 @@ async def test_generate_questions_for_answer_block(
     assert answer["children_questions"][0]["content"] == "New question?"
 
 
-async def test_generate_questions_block_not_found(client, mock_s3, mock_llm, sample_tree):
+async def test_generate_questions_block_not_found(
+    client, mock_s3, mock_llm, sample_tree
+):
     mock_s3["load"].return_value = sample_tree.model_dump()
     resp = await client.post(
         "/api/trees/tree-1/blocks/nonexistent/questions",
@@ -237,7 +239,11 @@ async def test_export_tree(client, mock_s3, evaluated_tree, tmp_path, monkeypatc
     mock_s3["load"].return_value = evaluated_tree.model_dump()
     import apps.backend.routes as routes_mod
 
-    monkeypatch.setattr(routes_mod, "Path", lambda p: tmp_path / "exports" if "exports" in str(p) else tmp_path)
+    monkeypatch.setattr(
+        routes_mod,
+        "Path",
+        lambda p: tmp_path / "exports" if "exports" in str(p) else tmp_path,
+    )
 
     resp = await client.post("/api/trees/tree-1/export")
     assert resp.status_code == 200

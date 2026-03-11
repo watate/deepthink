@@ -27,3 +27,8 @@ Objects:
 ```
 uv run fastapi dev apps/backend/main.py
 ```
+
+Run pre-commits:
+```
+uv run pre-commit run --all-files
+```
