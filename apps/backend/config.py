@@ -1,6 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings
+
+_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -13,7 +16,7 @@ class Settings(BaseSettings):
     llm_model: str = "moonshotai/kimi-k2.5"
     default_num_questions: int = 2
 
-    model_config = {"env_file": "../../.env"}
+    model_config = {"env_file": str(_ROOT / ".env")}
 
 
 @lru_cache

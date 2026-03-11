@@ -1,13 +1,15 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv("../../.env")
+_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(_ROOT / ".env")
 
-from config import get_settings  # noqa: E402
-from routes import router  # noqa: E402
+from .config import get_settings  # noqa: E402
+from .routes import router  # noqa: E402
 
 
 @asynccontextmanager

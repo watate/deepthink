@@ -1,9 +1,4 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from llm_service import split_text_into_blocks
+from apps.backend.llm_service import split_text_into_blocks
 
 
 def test_split_double_newline():

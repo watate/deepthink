@@ -5,8 +5,8 @@ from pathlib import Path
 
 from openai import AsyncOpenAI
 
-from config import get_settings
-from models import EvaluationResponse, QuestionsResponse
+from .config import get_settings
+from .models import EvaluationResponse, QuestionsResponse
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 

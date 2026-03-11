@@ -22,3 +22,8 @@ Objects:
 - TitleBlock
 - QuestionBlock
 - AnswerBlock
+
+# Run
+```
+uv run fastapi dev apps/backend/main.py
+```

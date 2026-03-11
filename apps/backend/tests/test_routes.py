@@ -1,6 +1,6 @@
 import pytest
 
-from models import QuestionBlock
+from apps.backend.models import QuestionBlock
 
 
 pytestmark = pytest.mark.anyio
@@ -235,10 +235,9 @@ async def test_evaluate_answer_not_found(client, mock_s3, mock_llm, sample_tree)
 
 async def test_export_tree(client, mock_s3, evaluated_tree, tmp_path, monkeypatch):
     mock_s3["load"].return_value = evaluated_tree.model_dump()
-    # Patch Path so export writes to tmp_path instead of ../../exports
-    import routes
+    import apps.backend.routes as routes_mod
 
-    monkeypatch.setattr(routes, "Path", lambda p: tmp_path / "exports" if "exports" in p else tmp_path)
+    monkeypatch.setattr(routes_mod, "Path", lambda p: tmp_path / "exports" if "exports" in str(p) else tmp_path)
 
     resp = await client.post("/api/trees/tree-1/export")
     assert resp.status_code == 200

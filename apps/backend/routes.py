@@ -3,9 +3,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
-import llm_service
-import s3_service
-from models import (
+from . import llm_service
+from . import s3_service
+from .models import (
     AnswerBlock,
     BlockTree,
     CreateTreeRequest,
@@ -296,7 +296,7 @@ async def export_tree(tree_id: str):
 
     md_content = "\n".join(lines)
 
-    export_dir = Path("../../exports")
+    export_dir = Path(__file__).resolve().parent.parent.parent / "exports"
     export_dir.mkdir(parents=True, exist_ok=True)
     safe_title = "".join(c if c.isalnum() or c in " -_" else "" for c in tree.title)
     filepath = export_dir / f"{safe_title}.md"

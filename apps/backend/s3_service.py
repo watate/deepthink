@@ -3,7 +3,7 @@ import json
 
 import boto3
 
-from config import get_settings
+from .config import get_settings
 
 
 def _client():

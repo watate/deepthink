@@ -1,15 +1,10 @@
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-# Ensure the backend package is importable
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from main import app  # noqa: E402
-from models import AnswerBlock, BlockTree, QuestionBlock, TitleBlock  # noqa: E402
+from apps.backend.main import app
+from apps.backend.models import AnswerBlock, BlockTree, QuestionBlock, TitleBlock
 
 
 @pytest.fixture
@@ -62,10 +57,10 @@ def evaluated_tree(answered_tree: BlockTree) -> BlockTree:
 def mock_s3():
     """Mock all S3 service functions."""
     with (
-        patch("routes.s3_service.save_tree", new_callable=AsyncMock) as save,
-        patch("routes.s3_service.load_tree", new_callable=AsyncMock) as load,
-        patch("routes.s3_service.list_trees", new_callable=AsyncMock) as list_t,
-        patch("routes.s3_service.delete_tree", new_callable=AsyncMock) as delete,
+        patch("apps.backend.routes.s3_service.save_tree", new_callable=AsyncMock) as save,
+        patch("apps.backend.routes.s3_service.load_tree", new_callable=AsyncMock) as load,
+        patch("apps.backend.routes.s3_service.list_trees", new_callable=AsyncMock) as list_t,
+        patch("apps.backend.routes.s3_service.delete_tree", new_callable=AsyncMock) as delete,
     ):
         yield {"save": save, "load": load, "list": list_t, "delete": delete}
 
@@ -74,17 +69,17 @@ def mock_s3():
 def mock_llm():
     """Mock all LLM service functions."""
     with (
-        patch("routes.llm_service.split_text_into_blocks") as split,
+        patch("apps.backend.routes.llm_service.split_text_into_blocks") as split,
         patch(
-            "routes.llm_service.generate_questions_for_blocks",
+            "apps.backend.routes.llm_service.generate_questions_for_blocks",
             new_callable=AsyncMock,
         ) as gen_for_blocks,
         patch(
-            "routes.llm_service.generate_questions",
+            "apps.backend.routes.llm_service.generate_questions",
             new_callable=AsyncMock,
         ) as gen,
         patch(
-            "routes.llm_service.evaluate_answer",
+            "apps.backend.routes.llm_service.evaluate_answer",
             new_callable=AsyncMock,
         ) as evaluate,
     ):

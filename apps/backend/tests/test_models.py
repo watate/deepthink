@@ -1,4 +1,4 @@
-from models import (
+from apps.backend.models import (
     AnswerBlock,
     BlockTree,
     EvaluationResponse,
