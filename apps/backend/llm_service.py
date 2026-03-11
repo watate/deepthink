@@ -35,10 +35,25 @@ def _get_client() -> AsyncOpenAI:
     )
 
 
-async def generate_questions(content: str, num_questions: int) -> list[str]:
+async def generate_questions(
+    content: str,
+    num_questions: int,
+    existing_questions: list[str] | None = None,
+) -> list[str]:
     """Generate questions for a piece of text."""
     client = _get_client()
     settings = get_settings()
+
+    if existing_questions:
+        numbered = "\n".join(
+            f"{i + 1}. {q}" for i, q in enumerate(existing_questions)
+        )
+        existing_section = (
+            f"The following questions have already been asked. "
+            f"Do NOT repeat or rephrase any of them:\n{numbered}"
+        )
+    else:
+        existing_section = ""
 
     resp = await client.chat.completions.create(
         model=settings.llm_model,
@@ -50,7 +65,9 @@ async def generate_questions(content: str, num_questions: int) -> list[str]:
             {
                 "role": "user",
                 "content": _load_prompt("generate_questions_user").format(
-                    num_questions=num_questions, content=content
+                    num_questions=num_questions,
+                    content=content,
+                    existing_questions_section=existing_section,
                 ),
             },
         ],

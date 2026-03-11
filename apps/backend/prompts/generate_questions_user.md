@@ -3,4 +3,6 @@ You are interviewing a candidate who wrote the following text. Generate exactly 
 Text:
 {content}
 
+{existing_questions_section}
+
 Return a JSON array of {num_questions} question strings.

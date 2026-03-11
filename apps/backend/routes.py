@@ -65,6 +65,22 @@ def _search_answer(q: QuestionBlock, answer_id: str) -> AnswerBlock | None:
     return None
 
 
+def _collect_all_questions(tree: BlockTree) -> list[str]:
+    """Collect every question string in the tree, at all depths."""
+    result: list[str] = []
+    for block in tree.blocks:
+        for q in block.questions:
+            _collect_questions_recursive(q, result)
+    return result
+
+
+def _collect_questions_recursive(q: QuestionBlock, out: list[str]) -> None:
+    out.append(q.content)
+    if q.answer:
+        for child_q in q.answer.children_questions:
+            _collect_questions_recursive(child_q, out)
+
+
 def _find_block(tree: BlockTree, block_id: str) -> TitleBlock | AnswerBlock | None:
     """Find a TitleBlock or AnswerBlock by id."""
     for block in tree.blocks:
@@ -185,7 +201,12 @@ async def generate_block_questions(
     if block is None:
         raise HTTPException(status_code=404, detail="Block not found")
 
-    new_questions = await llm_service.generate_questions(block.content, req.num_questions)
+    # Collect ALL questions across the entire tree so the LLM avoids duplicates
+    existing = _collect_all_questions(tree)
+
+    new_questions = await llm_service.generate_questions(
+        block.content, req.num_questions, existing_questions=existing
+    )
 
     if isinstance(block, TitleBlock):
         existing_count = len(block.questions)
