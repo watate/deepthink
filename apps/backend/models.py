@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class AnswerBlock(BaseModel):
     id: str
     content: str
-    score: float | None = None
+    score: int | None = None
     feedback: str | None = None
     children_questions: list[QuestionBlock] = Field(default_factory=list)
 

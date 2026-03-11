@@ -1,10 +1,19 @@
 import asyncio
 import json
 import re
+from functools import lru_cache
+from pathlib import Path
 
 from openai import AsyncOpenAI
 
 from config import get_settings
+
+PROMPTS_DIR = Path(__file__).parent / "prompts"
+
+
+@lru_cache
+def _load_prompt(name: str) -> str:
+    return (PROMPTS_DIR / f"{name}.md").read_text()
 
 
 def _get_client() -> AsyncOpenAI:
@@ -25,20 +34,12 @@ async def generate_questions(content: str, num_questions: int) -> list[str]:
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "You are an expert at generating thought-provoking questions "
-                    "that help people think deeply about written text. "
-                    "Return ONLY a JSON array of strings, no other text."
-                ),
+                "content": _load_prompt("generate_questions_system"),
             },
             {
                 "role": "user",
-                "content": (
-                    f"Generate exactly {num_questions} deep, thought-provoking questions "
-                    f"about the following text. The questions should challenge the reader "
-                    f"to think critically about the ideas presented.\n\n"
-                    f"Text:\n{content}\n\n"
-                    f"Return a JSON array of {num_questions} question strings."
+                "content": _load_prompt("generate_questions_user").format(
+                    num_questions=num_questions, content=content
                 ),
             },
         ],
@@ -64,20 +65,12 @@ async def evaluate_answer(
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "You evaluate answers to questions about written text. "
-                    "Score from 0.0 to 1.0 based on depth of thinking, accuracy, "
-                    "and insight. Provide constructive feedback. "
-                    'Return ONLY JSON: {"score": <float>, "feedback": "<string>"}'
-                ),
+                "content": _load_prompt("evaluate_answer_system"),
             },
             {
                 "role": "user",
-                "content": (
-                    f"Original text context:\n{context}\n\n"
-                    f"Question:\n{question}\n\n"
-                    f"Answer:\n{answer}\n\n"
-                    "Evaluate this answer."
+                "content": _load_prompt("evaluate_answer_user").format(
+                    context=context, question=question, answer=answer
                 ),
             },
         ],
