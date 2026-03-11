@@ -291,7 +291,7 @@ def _render_question(lines: list[str], q: QuestionBlock, depth: int):
     if q.answer:
         lines.append(f"{indent}**A:** {q.answer.content}\n")
         if q.answer.score is not None:
-            lines.append(f"{indent}*Score: {q.answer.score:.2f}*\n")
+            lines.append(f"{indent}*Score: {q.answer.score}/100*\n")
         if q.answer.feedback:
             lines.append(f"{indent}*Feedback: {q.answer.feedback}*\n")
         for child_q in q.answer.children_questions:
