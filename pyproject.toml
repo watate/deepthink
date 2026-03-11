@@ -13,4 +13,6 @@ dependencies = [
     "python-dotenv>=1.1.0",
     "pydantic-settings>=2.8.0",
     "pytest>=9.0.2",
+    "anyio[trio]>=4.9.0",
+    "pytest-anyio>=0.0.0",
 ]

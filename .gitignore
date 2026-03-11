@@ -35,3 +35,4 @@ npm-debug.log*
 .DS_Store
 *.pem
 /apps/backend/__pycache__
+/apps/backend/tests/__pycache__
