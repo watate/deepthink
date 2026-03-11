@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     llm_model: str = "moonshotai/kimi-k2.5"
     default_num_questions: int = 2
 
-    model_config = {"env_file": str(_ROOT / ".env")}
+    model_config = {"env_file": str(_ROOT / ".env"), "extra": "ignore"}
 
 
 @lru_cache

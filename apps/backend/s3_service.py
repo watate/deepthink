@@ -13,6 +13,7 @@ def _client():
         endpoint_url=settings.s3_api,
         aws_access_key_id=settings.s3_api_access_key_id,
         aws_secret_access_key=settings.s3_api_secret,
+        region_name="auto",
     )
 
 
