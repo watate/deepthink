@@ -34,3 +34,4 @@ npm-debug.log*
 # Misc
 .DS_Store
 *.pem
+/apps/backend/__pycache__

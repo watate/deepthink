@@ -16,3 +16,9 @@ Additional details:
 - All answers are stored in JSON. JSON is always saved automatically to S3 after generating questions or submitting answers
 - There is a dashboard to see a list of writings. The dashboard has a search feature
 - There is an export feature that exports the data as a Markdown file. This is exported to a local directory, since DeepThink is only for local use (no deployment plans currently)
+
+Objects:
+- BlockTree
+- TitleBlock
+- QuestionBlock
+- AnswerBlock
