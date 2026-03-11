@@ -1,8 +1,14 @@
+import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils";
+
+export const metadata: Metadata = {
+  title: "DeepThink",
+  description: "AI-powered deep thinking and analysis platform",
+}
 
 const fontSans = Geist({
   subsets: ["latin"],

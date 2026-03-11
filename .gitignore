@@ -36,3 +36,4 @@ npm-debug.log*
 *.pem
 /apps/backend/__pycache__
 /apps/backend/tests/__pycache__
+/exports
