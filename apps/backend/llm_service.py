@@ -4,9 +4,8 @@ import random
 from functools import lru_cache
 from pathlib import Path
 
-import anthropic
-
 from .config import get_settings
+from .llm_provider import AnthropicProvider, LLMResponse, OpenRouterProvider
 from .models import CreateBlockInput, EvaluationResponse, QuestionsResponse
 
 logger = logging.getLogger(__name__)
@@ -22,9 +21,24 @@ def _load_prompt(name: str) -> str:
     return (PROMPTS_DIR / f"{name}.md").read_text()
 
 
-def _get_client() -> anthropic.AsyncAnthropic:
+def _get_provider() -> AnthropicProvider | OpenRouterProvider:
     settings = get_settings()
-    return anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    if settings.anthropic_api_key:
+        logger.info("Using Anthropic provider")
+        return AnthropicProvider(api_key=settings.anthropic_api_key)
+    if settings.openrouter_api_key:
+        providers = (
+            [p.strip() for p in settings.openrouter_providers.split(",") if p.strip()]
+            if settings.openrouter_providers
+            else None
+        )
+        logger.info("Using OpenRouter provider (providers=%s)", providers)
+        return OpenRouterProvider(
+            api_key=settings.openrouter_api_key, providers=providers
+        )
+    raise RuntimeError(
+        "No LLM API key configured. Set ANTHROPIC_API_KEY or OPENROUTER_API_KEY."
+    )
 
 
 CREATE_BLOCK_TOOL = {
@@ -46,12 +60,19 @@ EVALUATION_TOOL = {
 }
 
 
-async def _call_with_retry(coro_fn, *args, **kwargs):  # type: ignore[no-untyped-def]
+async def _call_with_retry(
+    provider: AnthropicProvider | OpenRouterProvider,
+    coro_fn,
+    *args,
+    **kwargs,  # type: ignore[no-untyped-def]
+):
     """Call an async function with exponential backoff on rate limit errors."""
     for attempt in range(MAX_RETRIES):
         try:
             return await coro_fn(*args, **kwargs)
-        except anthropic.RateLimitError:
+        except Exception as exc:
+            if not provider.is_rate_limit_error(exc):
+                raise
             if attempt == MAX_RETRIES - 1:
                 raise
             wait = (2**attempt) + random.uniform(0, 1)
@@ -66,7 +87,7 @@ async def _call_with_retry(coro_fn, *args, **kwargs):  # type: ignore[no-untyped
 
 async def create_blocks(text: str, num_questions: int) -> list[CreateBlockInput]:
     """Agentic loop: LLM reads full text, creates blocks with questions via tool calls."""
-    client = _get_client()
+    provider = _get_provider()
     settings = get_settings()
 
     messages: list[dict] = [
@@ -82,8 +103,9 @@ async def create_blocks(text: str, num_questions: int) -> list[CreateBlockInput]
 
     for turn in range(MAX_AGENT_TURNS):
         logger.info("create_blocks turn %d — calling LLM...", turn + 1)
-        resp = await _call_with_retry(
-            client.messages.create,
+        resp: LLMResponse = await _call_with_retry(
+            provider,
+            provider.create,
             model=settings.llm_model,
             max_tokens=4096,
             system=_load_prompt("create_blocks_system"),
@@ -91,19 +113,16 @@ async def create_blocks(text: str, num_questions: int) -> list[CreateBlockInput]
             tools=[CREATE_BLOCK_TOOL],
         )
 
-        # Collect tool calls from this turn
-        tool_uses = [b for b in resp.content if b.type == "tool_use"]
-
-        if not tool_uses:
+        if not resp.tool_calls:
             logger.info(
                 "create_blocks — LLM done (no tool calls), total blocks: %d",
                 len(blocks),
             )
             break
 
-        for tool_use in tool_uses:
-            if tool_use.name == "create_block":
-                block = CreateBlockInput.model_validate(tool_use.input)
+        for tc in resp.tool_calls:
+            if tc.name == "create_block":
+                block = CreateBlockInput.model_validate(tc.input)
                 blocks.append(block)
                 logger.info(
                     "create_blocks — block %d created (%d questions, %d chars)",
@@ -112,25 +131,12 @@ async def create_blocks(text: str, num_questions: int) -> list[CreateBlockInput]
                     len(block.content),
                 )
 
-        # Send tool results back so the model can continue
-        messages.append({"role": "assistant", "content": resp.content})
-        messages.append(
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": tool_use.id,
-                        "content": "Block created.",
-                    }
-                    for tool_use in tool_uses
-                ],
-            }
-        )
+        results = {tc.id: "Block created." for tc in resp.tool_calls}
+        messages.extend(provider.build_result_messages(resp, results))
 
-        if resp.stop_reason == "end_turn":
+        if resp.is_done:
             logger.info(
-                "create_blocks — LLM signalled end_turn, total blocks: %d", len(blocks)
+                "create_blocks — LLM signalled done, total blocks: %d", len(blocks)
             )
             break
 
@@ -144,7 +150,7 @@ async def generate_questions(
 ) -> list[str]:
     """Generate additional questions for an existing block."""
     logger.info("generate_questions — requesting %d questions", num_questions)
-    client = _get_client()
+    provider = _get_provider()
     settings = get_settings()
 
     if existing_questions:
@@ -157,7 +163,8 @@ async def generate_questions(
         existing_section = ""
 
     resp = await _call_with_retry(
-        client.messages.create,
+        provider,
+        provider.create,
         model=settings.llm_model,
         max_tokens=1024,
         system=_load_prompt("generate_questions_system"),
@@ -175,9 +182,9 @@ async def generate_questions(
         tool_choice={"type": "tool", "name": "return_questions"},
     )
 
-    for block in resp.content:
-        if block.type == "tool_use" and block.name == "return_questions":
-            data = QuestionsResponse.model_validate(block.input)
+    for tc in resp.tool_calls:
+        if tc.name == "return_questions":
+            data = QuestionsResponse.model_validate(tc.input)
             return data.questions[:num_questions]
 
     return []
@@ -188,11 +195,12 @@ async def evaluate_answer(
 ) -> EvaluationResponse:
     """Evaluate an answer and return score + feedback."""
     logger.info("evaluate_answer — scoring answer (%d chars)", len(answer))
-    client = _get_client()
+    provider = _get_provider()
     settings = get_settings()
 
     resp = await _call_with_retry(
-        client.messages.create,
+        provider,
+        provider.create,
         model=settings.llm_model,
         max_tokens=1024,
         system=_load_prompt("evaluate_answer_system"),
@@ -208,8 +216,8 @@ async def evaluate_answer(
         tool_choice={"type": "tool", "name": "return_evaluation"},
     )
 
-    for block in resp.content:
-        if block.type == "tool_use" and block.name == "return_evaluation":
-            return EvaluationResponse.model_validate(block.input)
+    for tc in resp.tool_calls:
+        if tc.name == "return_evaluation":
+            return EvaluationResponse.model_validate(tc.input)
 
     return EvaluationResponse(score=0, feedback="")
