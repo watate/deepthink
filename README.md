@@ -1,7 +1,7 @@
 # DeepThink
 ![sample.png](sample.png)
 
-DeepThink is a tool that helps you think deeply about written text. This can be an essay, a blog post, a paper, or anything. It uses a tree structure to help you structure your thinking, and automatically generates questions for you to think about.
+**DeepThink is a tool that helps you think deeply about written text**. This can be an essay, a blog post, a paper, or anything. It uses a tree structure to help you structure your thinking, and automatically generates questions for you to think about.
 
 How it works:
 1. You paste a piece of writing (markdown format)
